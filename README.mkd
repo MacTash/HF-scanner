@@ -59,21 +59,21 @@ No downloads, no execution, no risk.
 2. pip or pipx
 
 3. (Optional) HF API token for private models & higher rate limits
-'''
-i. Clone the repository
+
+### Clone the repository
 git clone https://github.com/mactash/hfscanner
 cd hfscanner
 
-ii. Create a virtual environment (recommended)
+### Create a virtual environment (recommended)
 python3 -m venv venv
 source venv/bin/activate
 
-iii. Install dependencies
+### Install dependencies
 pip install -r requirements.txt
 
-iv. Install package in editable mode (enables hf-scan)
+### Install package in editable mode (enables hf-scan)
 pip install -e .
-v. Start scanning models
+### Start scanning models
 hf-scan scan (model name)
 **This installs the CLI tool hf-scan globally inside your venv.**
 '''
@@ -211,4 +211,5 @@ MIT License — free to use, modify, and distribute.
 
 This tool provides best-effort security analysis.
 Always review and sandbox unknown models before execution.
+
 
