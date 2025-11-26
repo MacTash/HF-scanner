@@ -90,12 +90,15 @@ def analyze_model_card(model_card_text: Optional[str]) -> ModelCardQualityScore:
     # Check for red flags
     red_flags = [flag for flag in RED_FLAG_KEYWORDS if flag in card_lower]
     
+    # Check for dataset description
+    has_dataset = "dataset" in card_lower or "data" in card_lower or "training data" in card_lower
+    
     # Calculate overall score
     score = 0.0
     
-    # Section completeness (60 points max)
+    # Section completeness (50 points max)
     sections_found = sum(1 for present in section_scores.values() if present)
-    score += (sections_found / len(REQUIRED_SECTIONS)) * 60
+    score += (sections_found / len(REQUIRED_SECTIONS)) * 50
     
     # Safety disclosure (15 points)
     if has_safety:
@@ -108,6 +111,10 @@ def analyze_model_card(model_card_text: Optional[str]) -> ModelCardQualityScore:
     # Evaluation results (10 points)
     if has_evaluation:
         score += 10
+        
+    # Dataset description (15 points)
+    if has_dataset:
+        score += 15
     
     # Penalty for red flags
     score -= len(red_flags) * 5
@@ -127,6 +134,8 @@ def analyze_model_card(model_card_text: Optional[str]) -> ModelCardQualityScore:
         recommendations.append("Document model limitations and failure modes")
     if not has_intended_use:
         recommendations.append("Clearly specify intended use cases")
+    if not has_dataset:
+        recommendations.append("Describe the training dataset")
     if red_flags:
         recommendations.append(f"Avoid exaggerated claims: {', '.join(red_flags)}")
     

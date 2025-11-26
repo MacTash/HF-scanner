@@ -32,14 +32,15 @@ def cli(verbose: bool, config: Optional[str]):
 @click.option('--output', '-o', type=click.Path(), help='Output file path')
 @click.option('--format', '-f', type=click.Choice(['json', 'html', 'text']), default='text', help='Report format')
 @click.option('--timeout', type=int, default=30, help='API timeout in seconds')
-def scan(model_id: str, output: Optional[str], format: str, timeout: int):
+@click.option('--strict-license', is_flag=True, help='Treat unknown licenses as high-risk')
+def scan(model_id: str, output: Optional[str], format: str, timeout: int, strict_license: bool):
     """Scan a single Hugging Face model."""
     
     click.echo(f"🔍 Scanning model: {model_id}")
     
     try:
         # Initialize scanner
-        scanner = ModelScanner(timeout=timeout)
+        scanner = ModelScanner(timeout=timeout, strict_license=strict_license)
         
         # Perform scan
         result = scanner.scan_model(model_id)
@@ -85,14 +86,15 @@ def scan(model_id: str, output: Optional[str], format: str, timeout: int):
 @click.option('--format', '-f', type=click.Choice(['json', 'html', 'text']), default='html', help='Report format')
 @click.option('--workers', '-w', type=int, default=4, help='Number of concurrent workers')
 @click.option('--timeout', type=int, default=30, help='API timeout in seconds')
-def batch(model_ids: List[str], output: Optional[str], format: str, workers: int, timeout: int):
+@click.option('--strict-license', is_flag=True, help='Treat unknown licenses as high-risk')
+def batch(model_ids: List[str], output: Optional[str], format: str, workers: int, timeout: int, strict_license: bool):
     """Scan multiple Hugging Face models."""
     
     click.echo(f"🔍 Batch scanning {len(model_ids)} models")
     
     try:
         # Initialize scanner
-        scanner = ModelScanner(max_workers=workers, timeout=timeout)
+        scanner = ModelScanner(max_workers=workers, timeout=timeout, strict_license=strict_license)
         
         # Perform batch scan
         results = scanner.scan_models_batch(list(model_ids))
@@ -140,7 +142,8 @@ def batch(model_ids: List[str], output: Optional[str], format: str, workers: int
 @click.option('--workers', '-w', type=int, default=4, help='Number of concurrent workers')
 @click.option('--no-download', is_flag=True, help='Skip file download and analysis')
 @click.option('--timeout', type=int, default=30, help='API timeout in seconds')
-def scan_file(input_file: str, output: Optional[str], format: str, workers: int, no_download: bool, timeout: int):
+@click.option('--strict-license', is_flag=True, help='Treat unknown licenses as high-risk')
+def scan_file(input_file: str, output: Optional[str], format: str, workers: int, no_download: bool, timeout: int, strict_license: bool):
     """Scan models listed in a file."""
     
     try:
@@ -157,8 +160,8 @@ def scan_file(input_file: str, output: Optional[str], format: str, workers: int,
                   output=output,
                   format=format,
                   workers=workers,
-                  no_download=no_download,
-                  timeout=timeout)
+                  timeout=timeout,
+                  strict_license=strict_license)
         
     except Exception as e:
         click.echo(click.style(f"❌ Error reading file: {str(e)}", fg='red'), err=True)

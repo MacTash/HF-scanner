@@ -118,7 +118,7 @@ class MetadataAnalyzer:
         
         if not has_card:
             security_issues.append(create_security_issue(
-                severity="medium",
+                severity="medium",  # Changed from high/medium to ensure it's not high alone
                 category="metadata",
                 title="No model card",
                 description="Model does not have a README/model card",

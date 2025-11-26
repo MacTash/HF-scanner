@@ -145,3 +145,43 @@ class HFAPIClient:
         except Exception as e:
             logger.error(f"Error fetching model card for {model_id}: {e}")
             return None
+
+    def get_dataset_info(self, dataset_id: str) -> Optional[Any]:
+        """
+        Get dataset information from HuggingFace Hub.
+        
+        Args:
+            dataset_id: Dataset identifier
+            
+        Returns:
+            DatasetInfo object or None if not found
+        """
+        self._rate_limit()
+        
+        try:
+            logger.info(f"Fetching dataset info for: {dataset_id}")
+            dataset_info = self.api.dataset_info(dataset_id, timeout=self.timeout)
+            return dataset_info
+        except Exception as e:
+            logger.warning(f"Error fetching dataset info for {dataset_id}: {e}")
+            return None
+
+    def list_dataset_files(self, dataset_id: str) -> List[str]:
+        """
+        List all files in a dataset repository.
+        
+        Args:
+            dataset_id: Dataset identifier
+            
+        Returns:
+            List of file paths in the repository
+        """
+        self._rate_limit()
+        
+        try:
+            logger.debug(f"Listing files for dataset: {dataset_id}")
+            files = list_repo_files(dataset_id, repo_type="dataset")
+            return files
+        except Exception as e:
+            logger.warning(f"Error listing files for dataset {dataset_id}: {e}")
+            return []

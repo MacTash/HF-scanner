@@ -114,8 +114,24 @@ class ReportGenerator:
         lines.append("LICENSE ANALYSIS")
         lines.append("-" * 80)
         lic = scan_result.license_analysis
-        lines.append(f"License Type: {lic.get('license_type', 'Not specified')}")
-        lines.append(f"Compatibility: {lic.get('license_compatibility', 'Unknown')}")
+        license_type = lic.get('license_type', 'Not specified')
+        
+        # Handle None vs "Unknown" vs actual license
+        if license_type is None:
+            lines.append(f"License Type: Not specified")
+        elif isinstance(license_type, str) and license_type.startswith("Unknown ("):
+            lines.append(f"License Type: {license_type}")
+            lines.append("Note: License field exists but is not recognized in our database")
+        else:
+            lines.append(f"License Type: {license_type}")
+        
+        compatibility = lic.get('license_compatibility', 'Unknown')
+        lines.append(f"Compatibility: {compatibility}")
+        
+        # Add explanation for REVIEW_REQUIRED
+        if compatibility == "REVIEW_REQUIRED":
+            lines.append("⚠️  Manual review required - verify license terms before use")
+        
         lines.append(f"License Risk Score: {lic.get('risk_score', 0):.2f}/10.0")
         lines.append("")
         
@@ -138,6 +154,29 @@ class ReportGenerator:
         lines.append(f"Vulnerabilities Found: {vuln.get('vulnerabilities_found', 0)}")
         lines.append(f"Vulnerability Risk Score: {vuln.get('risk_score', 0):.2f}/10.0")
         lines.append("")
+        
+        # Dataset Analysis
+        lines.append("-" * 80)
+        lines.append("DATASET ANALYSIS")
+        lines.append("-" * 80)
+        ds_analysis = scan_result.dataset_analysis
+        datasets = ds_analysis.get('datasets', [])
+        
+        if datasets:
+            lines.append(f"Total Datasets Scanned: {ds_analysis.get('total_datasets_scanned', 0)}")
+            lines.append(f"Max Impact Score: {ds_analysis.get('max_impact_score', 0):.2f}/10.0")
+            lines.append("")
+            
+            for i, ds in enumerate(datasets, 1):
+                lines.append(f"Dataset {i}: {ds.get('name', 'Unknown')}")
+                lines.append(f"  PII Detected: {'Yes' if ds.get('pii_found') else 'No'}")
+                lines.append(f"  Sensitive Domains: {', '.join(ds.get('sensitive_domains', [])) or 'None'}")
+                lines.append(f"  Redistribution Risk: {ds.get('redistribution_risk', 'low').upper()}")
+                lines.append(f"  Impact Score: {ds.get('impact_score', 0):.2f}/10.0")
+                lines.append("")
+        else:
+            lines.append("No linked datasets found.")
+            lines.append("")
         
         # Security Issues
         if scan_result.security_issues:
@@ -358,6 +397,62 @@ class ReportGenerator:
                     <div class="info-value">{scan_result.file_analysis.get('risk_score', 0):.2f}/10</div>
                 </div>
             </div>
+        </div>
+        
+        <div class="section">
+            <h2>📊 Dataset Analysis</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Total Datasets</div>
+                    <div class="info-value">{scan_result.dataset_analysis.get('total_datasets_scanned', 0)}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Max Impact Score</div>
+                    <div class="info-value">{scan_result.dataset_analysis.get('max_impact_score', 0):.2f}/10</div>
+                </div>
+            </div>
+"""
+        
+        datasets = scan_result.dataset_analysis.get('datasets', [])
+        if datasets:
+            html += """
+            <div style="margin-top: 20px;">
+"""
+            for ds in datasets:
+                html += f"""
+                <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 15px;">
+                    <div style="font-weight: bold; color: #333; margin-bottom: 10px; font-size: 1.1em;">
+                        Dataset: {ds.get('name', 'Unknown')}
+                    </div>
+                    <div class="info-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        <div class="info-item">
+                            <div class="info-label">PII Detected</div>
+                            <div class="info-value">{'Yes' if ds.get('pii_found') else 'No'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Sensitive Domains</div>
+                            <div class="info-value">{', '.join(ds.get('sensitive_domains', [])) or 'None'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Redistribution Risk</div>
+                            <div class="info-value">{ds.get('redistribution_risk', 'low').upper()}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Impact Score</div>
+                            <div class="info-value">{ds.get('impact_score', 0):.2f}/10</div>
+                        </div>
+                    </div>
+                </div>
+"""
+            html += """
+            </div>
+"""
+        else:
+            html += """
+            <p style="color: #666; margin-top: 15px;">No linked datasets found.</p>
+"""
+        
+        html += """
         </div>
         
         <div class="section">

@@ -158,3 +158,19 @@ reports/
 tmp/
 temp/
 tmp_*/
+# Virtual Environments
+venv/
+.venv/
+
+# HuggingFace Caches
+huggingface/
+**/huggingface/
+.cache/huggingface/
+datasets/
+models/
+
+# Model weight files
+*.bin
+*.safetensors
+*.pth
+*.pt

@@ -40,6 +40,8 @@ def calculate_provenance_score(model_metadata: Dict[str, Any]) -> ProvenanceScor
     author = model_metadata.get('author', '')
     downloads = model_metadata.get('downloads', 0)
     likes = model_metadata.get('likes', 0)
+    # Forks might not be standard in metadata but we'll try to use it if available or default to 0
+    forks = model_metadata.get('forks', 0) 
     
     # Try to get account creation date (may not be available)
     created_at = model_metadata.get('created_at')
@@ -61,7 +63,6 @@ def calculate_provenance_score(model_metadata: Dict[str, Any]) -> ProvenanceScor
     is_verified = False
     
     # We only have data for this one model, so model_count = 1
-    # In future, could query HF API for all models by author
     model_count = 1
     
     risk_factors = []
@@ -71,47 +72,44 @@ def calculate_provenance_score(model_metadata: Dict[str, Any]) -> ProvenanceScor
     score = 50.0
     
     # Account age scoring (+5 per year, max 20)
+    # New accounts alone should not escalate to Medium risk (score < 40)
     if account_age_days:
         years = account_age_days / 365.0
         age_bonus = min(years * 5, 20)
         score += age_bonus
         
         if account_age_days < 30:
-            risk_factors.append("Very new account (<30 days)")
-            score -= 15
-        elif account_age_days < 90:
-            risk_factors.append("New account (<90 days)")
-            score -= 5
+            # Reduced penalty for new account alone
+            risk_factors.append("New account (<30 days)")
+            score -= 5 
         elif years >= 2:
             trust_factors.append(f"Established account ({years:.1f} years)")
     
-    # Downloads scoring (+1 per 10k, max 10)
+    # Combined signals: Download velocity + Forks + Contributors (using likes/forks as proxy)
+    
+    # Downloads scoring (+1 per 10k, max 15)
     if downloads > 0:
-        download_bonus = min((downloads / 10000) * 1, 10)
+        download_bonus = min((downloads / 10000) * 1, 15)
         score += download_bonus
         
         if downloads >= 100000:
             trust_factors.append(f"High download count ({downloads:,})")
         elif downloads < 10:
+            # Low downloads is a risk factor but not severe alone
             risk_factors.append("Very low downloads")
-            score -= 5
+            score -= 2
     else:
         risk_factors.append("Zero downloads")
-        score -= 10
+        score -= 5
     
-    # Likes scoring (+1 per 100, max 10)
-    if likes > 0:
-        likes_bonus = min((likes / 100) * 1, 10)
-        score += likes_bonus
+    # Community Engagement (Likes + Forks)
+    engagement_score = likes + (forks * 2)
+    if engagement_score > 0:
+        engagement_bonus = min((engagement_score / 50) * 1, 15)
+        score += engagement_bonus
         
-        if likes >= 500:
-            trust_factors.append(f"High community engagement ({likes} likes)")
-        elif likes < 2:
-            risk_factors.append("Very low community engagement")
-            score -= 5
-    else:
-        risk_factors.append("Zero likes")
-        score -= 10
+        if engagement_score >= 500:
+            trust_factors.append(f"High community engagement ({likes} likes, {forks} forks)")
     
     # Organization bonus
     if is_organization:
@@ -123,8 +121,10 @@ def calculate_provenance_score(model_metadata: Dict[str, Any]) -> ProvenanceScor
         score += 10
         trust_factors.append("Verified account")
     
-    # Check for suspicious patterns
-    if downloads < 10 and likes < 2 and account_age_days and account_age_days < 90:
+    # Check for suspicious patterns (Combined signals)
+    # If downloads < 10 AND suspicious files exist (handled in model scanner)
+    # Here we check for "New account + Low engagement" combination
+    if account_age_days and account_age_days < 90 and downloads < 50 and likes < 5:
         risk_factors.append("⚠️ New account with minimal engagement")
         score -= 10
     

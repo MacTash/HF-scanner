@@ -82,11 +82,11 @@ def get_risk_level(risk_score: float) -> str:
     Returns:
         Risk level string
     """
-    if risk_score >= 7.0:
+    if risk_score > 7.5:
         return RiskLevel.CRITICAL
-    elif risk_score >= 4.0:
+    elif risk_score > 5.0:
         return RiskLevel.HIGH
-    elif risk_score >= 2.0:
+    elif risk_score > 2.5:
         return RiskLevel.MEDIUM
     else:
         return RiskLevel.LOW

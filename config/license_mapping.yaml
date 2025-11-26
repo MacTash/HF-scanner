@@ -1,0 +1,188 @@
+# License Mapping Configuration
+# Maps various license string variations to canonical license types
+
+# This file helps recognize different ways licenses are specified on HuggingFace
+
+license_mappings:
+  # Apache variants
+  apache-2.0:
+    - "apache-2.0"
+    - "apache 2.0"
+    - "apache license 2.0"
+    - "asl-2.0"
+    - "asl 2.0"
+  
+  # MIT variants
+  mit:
+    - "mit"
+    - "mit license"
+    - "the mit license"
+  
+  # GPL variants
+  gpl-3.0:
+    - "gpl-3.0"
+    - "gpl-3"
+    - "gplv3"
+    - "gnu gpl v3.0"
+    - "gnu general public license v3.0"
+  
+  gpl-2.0:
+    - "gpl-2.0"
+    - "gpl-2"
+    - "gplv2"
+    - "gnu gpl v2.0"
+  
+  # LGPL variants
+  lgpl-3.0:
+    - "lgpl-3.0"
+    - "lgpl-3"
+    - "lgplv3"
+    - "gnu lgpl v3.0"
+  
+  # BSD variants
+  bsd-3-clause:
+    - "bsd-3-clause"
+    - "bsd 3-clause"
+    - "bsd-3"
+    - "modified bsd"
+  
+  bsd-2-clause:
+    - "bsd-2-clause"
+    - "bsd 2-clause"
+    - "bsd-2"
+    - "simplified bsd"
+  
+  # Creative Commons variants
+  cc-by-4.0:
+    - "cc-by-4.0"
+    - "cc by 4.0"
+    - "creative commons attribution 4.0"
+  
+  cc-by-sa-4.0:
+    - "cc-by-sa-4.0"
+    - "cc by sa 4.0"
+    - "creative commons attribution share alike 4.0"
+  
+  cc-by-nc-4.0:
+    - "cc-by-nc-4.0"
+    - "cc by nc 4.0"
+    - "creative commons attribution non commercial 4.0"
+  
+  cc-by-nc-sa-4.0:
+    - "cc-by-nc-sa-4.0"
+    - "cc by nc sa 4.0"
+    - "creative commons attribution non commercial share alike 4.0"
+  
+  cc0-1.0:
+    - "cc0-1.0"
+    - "cc0"
+    - "creative commons zero"
+    - "public domain"
+  
+  # AI/ML-specific licenses
+  openrail:
+    - "openrail"
+    - "open rail"
+    - "open-rail"
+  
+  bigscience-openrail-m:
+    - "bigscience-openrail-m"
+    - "bigscience openrail-m"
+    - "bigscience-bloom-rail-1.0"
+  
+  creativeml-openrail-m:
+    - "creativeml-openrail-m"
+    - "creativeml openrail-m"
+    - "stable-diffusion-license"
+  
+  bigcode-openrail-m:
+    - "bigcode-openrail-m"
+    - "bigcode openrail-m"
+  
+  openrail++:
+    - "openrail++"
+    - "openrail plus plus"
+  
+  llama2:
+    - "llama2"
+    - "llama 2"
+    - "llama2 community license"
+    - "meta llama 2 community license agreement"
+  
+  llama3:
+    - "llama3"
+    - "llama 3"
+    - "llama3 community license"
+    - "meta llama 3 community license agreement"
+  
+  # Other/Custom
+  other:
+    - "other"
+    - "custom"
+    - "see license file"
+    - "proprietary"
+
+# Risk levels for compliance assessment
+risk_levels:
+  low:
+    - "apache-2.0"
+    - "mit"
+    - "bsd-3-clause"
+    - "bsd-2-clause"
+    - "cc-by-4.0"
+    - "cc0-1.0"
+    - "openrail"
+    - "bigscience-openrail-m"
+    - "creativeml-openrail-m"
+    - "bigcode-openrail-m"
+    - "openrail++"
+    - "llama2"
+    - "llama3"
+  
+  medium:
+    - "gpl-3.0"
+    - "gpl-2.0"
+    - "lgpl-3.0"
+    - "cc-by-sa-4.0"
+    - "other"
+  
+  high:
+    - "cc-by-nc-4.0"
+    - "cc-by-nc-sa-4.0"
+    - "agpl-3.0"
+
+# Commercial use compatibility
+commercial_compatible:
+  - "apache-2.0"
+  - "mit"
+  - "bsd-3-clause"
+  - "bsd-2-clause"
+  - "cc-by-4.0"
+  - "cc-by-sa-4.0"
+  - "cc0-1.0"
+  - "gpl-3.0"
+  - "gpl-2.0"
+  - "lgpl-3.0"
+  - "openrail"
+  - "bigscience-openrail-m"
+  - "creativeml-openrail-m"
+  - "bigcode-openrail-m"
+  - "openrail++"
+  - "llama2"
+  - "llama3"
+
+commercial_restricted:
+  - "cc-by-nc-4.0"
+  - "cc-by-nc-sa-4.0"
+
+# Copyleft licenses
+copyleft:
+  strong:
+    - "gpl-3.0"
+    - "gpl-2.0"
+    - "agpl-3.0"
+  weak:
+    - "lgpl-3.0"
+  share_alike:
+    - "cc-by-sa-4.0"
+    - "cc-by-nc-sa-4.0"

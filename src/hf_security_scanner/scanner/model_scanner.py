@@ -30,6 +30,7 @@ class ScanResult:
     license_analysis: Dict[str, Any]
     metadata_analysis: Dict[str, Any]
     vulnerability_analysis: Dict[str, Any]
+    dataset_analysis: Dict[str, Any]  # New field
     overall_risk_score: float
     security_issues: List[Dict[str, Any]]
     recommendations: List[str]
@@ -45,24 +46,28 @@ class ModelScanner:
     def __init__(self,
                  max_workers: int = 4,
                  timeout: int = 30,
+                 strict_license: bool = False,
                  token: Optional[str] = None):
-        """
-        Initialize the model scanner.
-
+        """Initialize the model scanner.
+        
         Args:
-            max_workers: Maximum number of concurrent workers
-            timeout: Timeout for API requests in seconds
+            max_workers: Maximum number of workers for batch scanning
+            timeout: Request timeout in seconds
+            strict_license: If True, treat unknown licenses as high-risk
             token: HuggingFace API token (optional)
         """
         self.hf_client = HFAPIClient(token=token, timeout=timeout)
         self.max_workers = max_workers
         self.timeout = timeout
-
-        # Initialize analyzers
+        self.strict_license = strict_license
+        
+        # Initialize scanners
         self.file_analyzer = FileAnalyzer()
-        self.license_checker = LicenseChecker()
+        self.license_checker = LicenseChecker(strict_license=strict_license)
         self.metadata_analyzer = MetadataAnalyzer()
         self.vulnerability_scanner = VulnerabilityScanner()
+        from .dataset_scanner import DatasetScanner
+        self.dataset_scanner = DatasetScanner()
 
         logger.info(f"ModelScanner initialized with {max_workers} workers")
 
@@ -100,6 +105,8 @@ class ModelScanner:
             # Analyze files
             logger.info("📁 Analyzing files...")
             file_result = self.file_analyzer.analyze_files(files)
+            
+
             file_analysis = {
                 "total_files": file_result.total_files,
                 "suspicious_files": len(file_result.suspicious_files),
@@ -110,7 +117,12 @@ class ModelScanner:
             
             # Analyze license
             logger.info("📜 Analyzing license...")
-            license_result = self.license_checker.analyze_license(model_info)
+            # Pass metadata license for accurate detection
+            metadata_license = model_metadata.get("license")
+            license_result = self.license_checker.analyze_license(
+                model_info,
+                metadata_license=metadata_license
+            )
             license_analysis = license_result["analysis"]
             all_security_issues.extend(license_result["issues"])
             all_recommendations.extend(license_result["recommendations"])
@@ -159,6 +171,97 @@ class ModelScanner:
             model_metadata['provenance_score'] = provenance_score.trust_score
             model_metadata['provenance_level'] = provenance_score
             
+            # Dataset Security Analysis (Phase 1 + Linked Datasets)
+            logger.info("📊 Analyzing dataset risks...")
+            
+            # 1. Identify linked datasets
+            linked_datasets = set()
+            
+            # Check cardData
+            if hasattr(model_info, "cardData") and model_info.cardData:
+                datasets = model_info.cardData.get("datasets", [])
+                if isinstance(datasets, str):
+                    linked_datasets.add(datasets)
+                elif isinstance(datasets, list):
+                    linked_datasets.update(datasets)
+            
+            # Check tags
+            for tag in model_metadata.get("tags", []):
+                if tag.startswith("dataset:"):
+                    linked_datasets.add(tag.split(":", 1)[1])
+            
+            dataset_results_list = []
+            aggregated_impact_score = 0.0
+            
+            # 2. Scan each dataset
+            if linked_datasets:
+                logger.info(f"Found {len(linked_datasets)} linked datasets: {', '.join(linked_datasets)}")
+                for ds_name in linked_datasets:
+                    try:
+                        logger.info(f"Scanning dataset: {ds_name}")
+                        ds_info = self.hf_client.get_dataset_info(ds_name)
+                        if not ds_info:
+                            logger.warning(f"Could not fetch info for dataset {ds_name}, skipping")
+                            continue
+                            
+                        ds_files = self.hf_client.list_dataset_files(ds_name)
+                        
+                        # Convert ds_info to dict for scanner
+                        ds_metadata = {
+                            "id": ds_name,
+                            "description": getattr(ds_info, "description", ""),
+                            "tags": getattr(ds_info, "tags", []),
+                            "license": getattr(ds_info, "cardData", {}).get("license", ""),
+                            "cardData": getattr(ds_info, "cardData", {})
+                        }
+                        
+                        ds_result = self.dataset_scanner.scan_dataset(ds_metadata, ds_files)
+                        
+                        dataset_results_list.append({
+                            "name": ds_name,
+                            "pii_found": ds_result.pii_found,
+                            "sensitive_domains": ds_result.sensitive_domains,
+                            "redistribution_risk": ds_result.redistribution_risk,
+                            "impact_score": ds_result.impact_score
+                        })
+                        
+                        # Aggregate issues
+                        for issue in ds_result.security_issues:
+                            # Contextualize issue title
+                            issue['title'] = f"[Dataset: {ds_name}] {issue['title']}"
+                            all_security_issues.append(issue)
+                            
+                        aggregated_impact_score = max(aggregated_impact_score, ds_result.impact_score)
+                        
+                    except Exception as e:
+                        logger.warning(f"Failed to scan dataset {ds_name}: {e}")
+            else:
+                logger.info("No linked datasets found in metadata")
+
+            # 3. Also scan the model repo itself as a "dataset" if it looks like one (legacy check)
+            # (Keeping this lightweight or merging it? The prompt implies full replacement but let's keep it safe)
+            # Actually, the prompt says "Implement full linked-dataset scanning support". 
+            # If no linked datasets, we might still want to check the model repo for PII if it contains data files.
+            # But for now, let's focus on the linked datasets as requested.
+            
+            dataset_analysis = {
+                "datasets": dataset_results_list,
+                "total_datasets_scanned": len(dataset_results_list),
+                "max_impact_score": aggregated_impact_score
+            }
+            
+            # Usage-Based Validation (Supply Chain Risk)
+            downloads = model_metadata.get('downloads', 0)
+            if downloads < 10 and file_result.suspicious_files:
+                all_security_issues.append({
+                    "severity": "high",  # Escalate to high
+                    "category": "supply_chain",
+                    "title": "High Supply Chain Risk",
+                    "description": "Model has very low usage (<10 downloads) AND contains suspicious files",
+                    "recommendation": "Do not use without manual code review - high risk of malware",
+                    "details": {"suspicious_files": file_result.suspicious_files}
+                })
+            
             # Calculate overall risk score
             overall_risk_score = calculate_risk_score(all_security_issues)
             
@@ -174,6 +277,7 @@ class ModelScanner:
                 license_analysis=license_analysis,
                 metadata_analysis=metadata_analysis,
                 vulnerability_analysis=vulnerability_analysis,
+                dataset_analysis=dataset_analysis,  # Add dataset analysis
                 overall_risk_score=overall_risk_score,
                 security_issues=all_security_issues,
                 recommendations=list(set(all_recommendations))  # Remove duplicates
